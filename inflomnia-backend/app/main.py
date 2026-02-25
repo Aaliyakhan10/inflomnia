@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.database import engine, Base
-from app.routers import reach, comments, workload
+from app.routers import reach, comments, workload, pricing, scripts, matching, instagram
 
 # Import all models so Alembic/SQLAlchemy can discover them
 import app.models  # noqa: F401
@@ -15,7 +15,7 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Inflomnia — Resilience Engine API",
-    description="The Shield: Reach Anomaly Detection, Comment Shield, and Workload Signal Engine",
+    description="The Shield + The Accelerator: Resilience Engine and Monetization Accelerator",
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
@@ -34,6 +34,12 @@ app.add_middleware(
 app.include_router(reach.router)
 app.include_router(comments.router)
 app.include_router(workload.router)
+# Accelerator
+app.include_router(pricing.router)
+app.include_router(scripts.router)
+app.include_router(matching.router)
+# Instagram
+app.include_router(instagram.router)
 
 
 @app.get("/health", tags=["Health"])

@@ -1,0 +1,219 @@
+"use client";
+import { useState } from "react";
+import { DollarSign, TrendingUp, TrendingDown, Minus, Loader, ChevronDown } from "lucide-react";
+import { pricingApi } from "@/lib/api";
+
+const CREATOR_ID = "demo-creator-001";
+
+const PLATFORMS = ["instagram", "youtube", "tiktok"];
+const DELIVERABLES = ["post", "reel", "story", "video"];
+const NICHES = ["fitness", "beauty", "tech", "gaming", "food", "travel", "fashion", "finance", "education", "lifestyle", "general"];
+
+const VERDICT_CONFIG = {
+    great: { color: "#22c55e", label: "Great deal — above your range!", icon: TrendingUp },
+    fair: { color: "#6366f1", label: "Fair deal — within range", icon: Minus },
+    below_range: { color: "#f59e0b", label: "Slightly below range", icon: TrendingDown },
+    low: { color: "#ef4444", label: "Low — negotiate up", icon: TrendingDown },
+};
+
+export default function PricingPage() {
+    const [form, setForm] = useState({
+        platform: "instagram", deliverable_type: "reel",
+        follower_count: "50000", engagement_rate: "4.5",
+        niche: "fitness", brand_name: "", offered_price: "",
+    });
+    const [result, setResult] = useState<any>(null);
+    const [history, setHistory] = useState<any[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [tab, setTab] = useState<"estimate" | "history">("estimate");
+
+    function update(k: string, v: string) { setForm(f => ({ ...f, [k]: v })); }
+
+    async function handleEstimate(e: React.FormEvent) {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const res = await pricingApi.estimate({
+                creator_id: CREATOR_ID,
+                platform: form.platform,
+                deliverable_type: form.deliverable_type,
+                follower_count: parseInt(form.follower_count),
+                engagement_rate: parseFloat(form.engagement_rate) / 100,
+                niche: form.niche,
+                brand_name: form.brand_name || undefined,
+                offered_price: form.offered_price ? parseFloat(form.offered_price) : undefined,
+            });
+            setResult(res.data);
+        } catch { }
+        setLoading(false);
+    }
+
+    async function loadHistory() {
+        try {
+            const res = await pricingApi.getHistory(CREATOR_ID);
+            setHistory(res.data?.items || []);
+        } catch { }
+    }
+
+    const verdict = result?.deal_verdict ? VERDICT_CONFIG[result.deal_verdict as keyof typeof VERDICT_CONFIG] : null;
+
+    return (
+        <div className="p-8 max-w-4xl mx-auto space-y-6">
+            <div>
+                <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <DollarSign size={22} className="text-green-400" /> Brand Deal Pricing
+                </h1>
+                <p className="text-gray-500 text-sm mt-0.5">Get a data-backed fair rate for any brand deal</p>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-1 p-1 rounded-lg w-fit" style={{ background: "var(--surface-3)" }}>
+                {(["estimate", "history"] as const).map(t => (
+                    <button key={t} onClick={() => { setTab(t); if (t === "history") loadHistory(); }}
+                        className={`px-4 py-1.5 rounded-md text-xs font-semibold capitalize transition-all ${tab === t ? "bg-indigo-500 text-white" : "text-gray-400 hover:text-white"
+                            }`}>
+                        {t === "estimate" ? "Get Estimate" : "History"}
+                    </button>
+                ))}
+            </div>
+
+            {tab === "estimate" ? (
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    {/* Form */}
+                    <form onSubmit={handleEstimate} className="card space-y-4">
+                        <h2 className="font-semibold text-white text-sm uppercase tracking-wider">Creator Profile</h2>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-xs text-gray-500 mb-1 block">Platform</label>
+                                <select value={form.platform} onChange={e => update("platform", e.target.value)}
+                                    className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-500">
+                                    {PLATFORMS.map(p => <option key={p} value={p}>{p}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-500 mb-1 block">Deliverable</label>
+                                <select value={form.deliverable_type} onChange={e => update("deliverable_type", e.target.value)}
+                                    className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-500">
+                                    {DELIVERABLES.map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-xs text-gray-500 mb-1 block">Followers</label>
+                            <input type="number" value={form.follower_count} onChange={e => update("follower_count", e.target.value)}
+                                className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-500" />
+                        </div>
+
+                        <div>
+                            <label className="text-xs text-gray-500 mb-1 block">Engagement Rate (%)</label>
+                            <input type="number" step="0.1" value={form.engagement_rate} onChange={e => update("engagement_rate", e.target.value)}
+                                className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-500" />
+                        </div>
+
+                        <div>
+                            <label className="text-xs text-gray-500 mb-1 block">Niche</label>
+                            <select value={form.niche} onChange={e => update("niche", e.target.value)}
+                                className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-500">
+                                {NICHES.map(n => <option key={n} value={n}>{n}</option>)}
+                            </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-xs text-gray-500 mb-1 block">Brand Name (optional)</label>
+                                <input type="text" placeholder="e.g. Nike" value={form.brand_name} onChange={e => update("brand_name", e.target.value)}
+                                    className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-500" />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-500 mb-1 block">Their Offer $ (optional)</label>
+                                <input type="number" placeholder="500" value={form.offered_price} onChange={e => update("offered_price", e.target.value)}
+                                    className="w-full px-3 py-2 rounded-lg bg-white/[0.05] border border-white/10 text-white text-sm focus:outline-none focus:border-indigo-500" />
+                            </div>
+                        </div>
+
+                        <button type="submit" disabled={loading}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-green-500 text-white text-sm font-medium hover:bg-green-600 transition-all">
+                            {loading ? <Loader size={14} className="animate-spin" /> : <DollarSign size={14} />}
+                            {loading ? "Calculating…" : "Get Price Range"}
+                        </button>
+                    </form>
+
+                    {/* Result */}
+                    <div className="space-y-4">
+                        {result ? (
+                            <>
+                                {/* Price range */}
+                                <div className="card">
+                                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Suggested Range</p>
+                                    <div className="flex items-end gap-3 mb-2">
+                                        <div className="text-center">
+                                            <div className="text-xs text-gray-500 mb-1">Min</div>
+                                            <div className="text-2xl font-bold text-white">${result.suggested_price_min?.toFixed(0)}</div>
+                                        </div>
+                                        <div className="text-gray-600 text-xl mb-1">–</div>
+                                        <div className="text-center">
+                                            <div className="text-xs text-gray-500 mb-1">Max</div>
+                                            <div className="text-2xl font-bold text-white">${result.suggested_price_max?.toFixed(0)}</div>
+                                        </div>
+                                        <div className="ml-auto text-center">
+                                            <div className="text-xs text-gray-500 mb-1">Recommended</div>
+                                            <div className="text-2xl font-bold text-green-400">${result.recommended_price?.toFixed(0)}</div>
+                                        </div>
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-2">
+                                        Confidence: <strong className="text-gray-300">{(result.confidence * 100).toFixed(0)}%</strong>
+                                    </div>
+                                </div>
+
+                                {/* Verdict */}
+                                {verdict && (
+                                    <div className="card flex items-center gap-3" style={{ borderColor: `${verdict.color}30` }}>
+                                        <verdict.icon size={18} style={{ color: verdict.color }} />
+                                        <span className="text-sm font-medium" style={{ color: verdict.color }}>{verdict.label}</span>
+                                        {result.offered_price && (
+                                            <span className="text-xs text-gray-500 ml-auto">Offer: ${result.offered_price}</span>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Reasoning */}
+                                <div className="card">
+                                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Claude's Analysis</p>
+                                    <p className="text-gray-300 text-sm leading-relaxed">{result.reasoning}</p>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="card flex items-center justify-center h-64 text-gray-500 text-sm">
+                                Fill in your details to get a price estimate
+                            </div>
+                        )}
+                    </div>
+                </div>
+            ) : (
+                /* History */
+                <div className="space-y-3">
+                    {history.length === 0 ? (
+                        <div className="card text-center py-10 text-gray-500 text-sm">No estimates yet.</div>
+                    ) : history.map((h: any, i: number) => (
+                        <div key={i} className="card flex items-center gap-6">
+                            <div>
+                                <div className="text-xs text-gray-500 capitalize">{h.platform} · {h.deliverable_type}</div>
+                                <div className="font-semibold text-white">{h.niche}</div>
+                            </div>
+                            <div className="ml-auto text-right">
+                                <div className="text-xs text-gray-500">Range</div>
+                                <div className="text-white font-semibold">${h.suggested_price_min?.toFixed(0)}–${h.suggested_price_max?.toFixed(0)}</div>
+                            </div>
+                            <div className="text-right">
+                                <div className="text-xs text-gray-500">Recommended</div>
+                                <div className="text-green-400 font-bold">${h.recommended_price?.toFixed(0)}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
